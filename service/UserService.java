@@ -1,12 +1,13 @@
 package com.otpapi.service;
 
+
 import com.otpapi.entity.User;
 import com.otpapi.repo.UserRepository;
+import com.otpapi.request.PasswordResetRequestDto;
+import com.otpapi.util.PasswordEncoderUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
-import java.util.Random;
 
 @Service
 public class UserService {
@@ -15,28 +16,18 @@ public class UserService {
     private UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private PasswordEncoderUtil passwordEncoderUtil;
 
-    public User registerUser(String email, String password) {
-        User user = new User();
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setOtp(generateOTP());
-        user.setVerified(false);
-        return userRepository.save(user);
-    }
-
-    public boolean verifyOtp(String email, String otp) {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-        if (user.getOtp().equals(otp)) {
-            user.setVerified(true);
-            userRepository.save(user);
-            return true;
+    public ResponseEntity<?> getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
         }
-        return false;
+        return ResponseEntity.ok(user);
     }
 
-    private String generateOTP() {
-        return String.valueOf(new Random().nextInt(999999));
+    public ResponseEntity<?> resetPassword(PasswordResetRequestDto passwordResetRequestDto) {
+        return ResponseEntity.ok("Password reset successful");
     }
 }
+

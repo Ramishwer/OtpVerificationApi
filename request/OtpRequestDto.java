@@ -1,9 +1,10 @@
-package com.otpapi.verifyrequst;
+package com.otpapi.request;
 
 import lombok.Data;
 
 @Data
-public class VerifyOtpRequest {
+public class OtpRequestDto {
     private String email;
     private String otp;
+
 }
