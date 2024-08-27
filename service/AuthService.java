@@ -1,8 +1,8 @@
 package com.otpapi.service;
 
-
 import com.otpapi.entity.User;
 import com.otpapi.exception.InvalidFormDetailsException;
+import com.otpapi.exception.InvalidOtpException;
 import com.otpapi.repo.UserRepository;
 import com.otpapi.request.LoginRequestDto;
 import com.otpapi.request.OtpRequestDto;
@@ -25,34 +25,58 @@ public class AuthService {
     @Autowired
     private PasswordEncoderUtil passwordEncoderUtil;
 
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private OtpService otpService;
+
     public ResponseEntity<?> signup(SignupRequestDto signupRequestDto) {
+        // Validate passwords
 //        if (!signupRequestDto.getPassword().equals(signupRequestDto.getConfirmPassword())) {
 //            throw new InvalidFormDetailsException("Passwords do not match");
 //        }
+
 
         User user = new User();
         user.setEmail(signupRequestDto.getEmail());
         user.setPassword(passwordEncoderUtil.encodePassword(signupRequestDto.getPassword()));
         userRepository.save(user);
 
-        // Send OTP logic here
+
+        String otp = otpService.generateAndStoreOtp(user.getEmail());
+        emailService.sendOtp(user.getEmail(), otp);
 
         return ResponseEntity.ok("Signup successful, please verify OTP");
     }
 
     public ResponseEntity<?> verifyOtp(OtpRequestDto otpRequestDto) {
-        // OTP verification logic here
-        // If OTP is incorrect, throw InvalidOtpException
-        return ResponseEntity.ok("OTP verified successfully");
+        if (otpService.validateOtp(otpRequestDto.getEmail(), otpRequestDto.getOtp())) {
+
+            String token = generateTokenForUser(otpRequestDto.getEmail());
+            return ResponseEntity.ok("OTP verified successfully. Token: " + token);
+        } else {
+            throw new InvalidOtpException("Invalid OTP");
+        }
     }
 
-    public ResponseEntity<?> login(LoginRequestDto loginRequestDto) {
+    private String generateTokenForUser(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new InvalidFormDetailsException("User not found");
+        }
+
+        // Generate and return JWT token
+        return jwtUtil.generateToken(user.getEmail());
+    }
+
+    public String login(LoginRequestDto loginRequestDto) {
         User user = userRepository.findByEmail(loginRequestDto.getEmail());
         if (user == null || !passwordEncoderUtil.matches(loginRequestDto.getPassword(), user.getPassword())) {
             throw new InvalidFormDetailsException("Invalid email or password");
         }
 
         String token = jwtUtil.generateToken(user.getEmail());
-        return ResponseEntity.ok(token);
+        return token;
     }
 }
